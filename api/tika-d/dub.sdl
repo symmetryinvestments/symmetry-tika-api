@@ -1,0 +1,6 @@
+name "kaleidic-api-tika-d"
+description "API around Apache Tika text conversion library"
+copyright "Copyright © 2015, Laeeth Isharc and Kaleidic Associates Advisory Limited"
+authors "Laeeth Isharc"
+dependency "vibe-d" version="~>0.7.23"
+targetType "library"
