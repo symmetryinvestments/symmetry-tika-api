@@ -2,7 +2,7 @@ name "tika-d"
 description "API around Apache Tika text conversion library"
 copyright "Copyright © 2015, Laeeth Isharc and Kaleidic Associates Advisory Limited"
 authors "Laeeth Isharc"
-dependency "vibe-d" version="~>0.7.30-rc.2"
+dependency "vibe-d" version="*"
 configuration "library" {
 	targetType "library"
 }
