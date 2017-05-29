@@ -7,12 +7,8 @@ import std.conv;
 import std.exception;
 import std.string;
 import std.file;
-import vibe.d;
-import vibe.core.log;
-import vibe.http.client;
-import vibe.stream.operations;
-import vibe.utils.dictionarylist;
-
+import std.net.curl;
+import requests;
 
 unittest
 {
@@ -44,7 +40,7 @@ struct TikaServer
 	{
 		this.url=url;
 	}
-	string testGet()
+/+	string testGet()
 	{
 		string ret;
 		requestHTTP(url~"/mime-types",
@@ -57,25 +53,14 @@ struct TikaServer
 		);
 		return to!string(ret);
 	}
-
++/
 	string[string] extractMetaData(string filename)
 	{
 		string[string] ret;
-		auto buf=cast(ubyte[])read(filename);
-		string meta;
-		requestHTTP(url~"/"~url_meta,
-			(scope req)
-			{
-				req.method = HTTPMethod.PUT;
-				//req.contentLength=buf.length;
-				req.bodyWriter.write(buf);
-			},
-			(scope res)
-			{
-				meta~= to!string(res.bodyReader.readAllUTF8());
-			}
-		);
-		foreach(line;meta.splitLines)
+		auto file=File(filename);
+		auto rq = HTTPRequest();
+		auto meta = rq.exec!"PUT"(url~"/"~url_meta,file.byChunk(1024));
+		foreach(line;meta.responseBody.to!string.splitLines)
 		{
 			auto cols=line.split(',');
 			ret[cols[0].unQuote]=cols[1].unQuote;
@@ -98,61 +83,19 @@ struct TikaServer
 	string detectType(string filename)
 	{
 		string ret;
-		auto buf=cast(ubyte[])read(filename);
-		requestHTTP(url~"/"~url_detect,
-			(scope req)
-			{
-				req.method=HTTPMethod.PUT;
-				req.bodyWriter.write(buf);
-			},
-			(scope res)
-			{
-				ret~=res.bodyReader.readAllUTF8.to!string;
-			}
-		);
-		return ret;
+		auto file=File(filename);
+		auto rq = HTTPRequest();
+		auto meta = rq.exec!"PUT"(url~"/"~url_detect,file.byChunk(1024));
+		return meta.responseBody.to!string;
 	}
 
 	string convertToText(string filename)
 	{
-		string ret;
-		auto buf=cast(ubyte[])read(filename);
-		requestHTTP(url~"/"~url_tika,
-			(scope req)
-			{
-				req.method = HTTPMethod.PUT;
-				//req.contentLength=buf.length;
-				req.bodyWriter.write(buf);
-			},
-			(scope res)
-			{
-				ret~= to!string(res.bodyReader.readAllUTF8());
-			}
-		);
-		return ret;
+		auto file=File(filename);
+		auto rq = HTTPRequest();
+		auto meta = rq.exec!"PUT"(url~"/"~url_tika,file.byChunk(1024));
+		return meta.responseBody.to!string;
 	}
-
-	auto createDictionaryList(string[string] headers)
-	{
-		DictionaryList!(string,false,32L)  dictionaryList;
-		foreach(header;headers.keys)
-		{
-			writefln("header: %s %s",header,headers[header]);
-			dictionaryList.addField(header,headers[header]);
-		}
-		return dictionaryList;
-	}
-}
-
-private void download(string url, string filename)
-{
-    requestHTTP(url,
-	(scope req) {
-		},
-	(scope res) {
-			std.file.write(filename,res.bodyReader.readAll);
-		}
-	);
 }
 
 private string unQuote(string s)
