@@ -10,18 +10,22 @@ import requests;
 
 unittest
 {
-	import std.net.curl;
-	auto dlangUrl="http://dlang.org/dlangspec.pdf";
-	auto filenameIndex=dlangUrl.lastIndexOf("/");
-	enforce (filenameIndex>-1);
-	auto filename="."~dlangUrl[filenameIndex..$];
+	import std.conv : to;
+	import std.net.curl : download;
+	auto testFileUrl ="https://github.com/Laeeth/docshare/raw/master/paretian.pdf";
+	auto filenameIndex = testFileUrl.lastIndexOf("/");
+	enforce (filenameIndex > -1);
+	auto filename="." ~ testFileUrl[filenameIndex..$];
 	if(!filename.exists)
-		download(dlangUrl,filename);
+		download(testFileUrl,filename);
 	TikaServer tikaServer;
 	enforce(tikaServer.detectType(filename).value == "application/pdf");
 	auto meta = tikaServer.extractMetaData(filename);
-	enforce(meta.value["title"]=="D Programming Language Specification");
+	enforce(meta.success, "failed to extract metadata" ~ "\n" ~ meta.value.to!string);
 	auto res = tikaServer.convertBulkToText([filename]);
+	import std.stdio;
+	stderr.writeln(meta.value["title"]);
+	enforce(meta.value["title"] == "THE BEST AND THE REST: REVISITING THE NORM OF NORMALITY OF INDIVIDUAL PERFORMANCE");
 }
 
 struct TikaResult
