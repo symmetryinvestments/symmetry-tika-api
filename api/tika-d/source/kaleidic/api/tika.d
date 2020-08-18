@@ -80,7 +80,7 @@ struct TikaServer
 	string url="http://127.0.0.1:9998";
 	Duration timeout = 60.seconds;
 
-	this(string url, int timeoutSeconds = 60)
+	this(string url = "http://127.0.0.1:9998", int timeoutSeconds = 60)
 	{
 		this.url = url;
 		this.timeout= timeoutSeconds.seconds;
