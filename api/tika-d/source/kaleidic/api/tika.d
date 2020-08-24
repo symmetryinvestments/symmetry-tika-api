@@ -1,43 +1,36 @@
 module kaleidic.api.tika;
-import std.stdio;
-import core.thread;
-import std.algorithm;
-import std.array;
-import std.exception;
-import std.string;
-import std.file;
-import requests;
 
 unittest
 {
-	import std.conv : to;
+	import std.conv : text;
 	import std.net.curl : download;
-	auto testFileUrl ="https://github.com/Laeeth/docshare/raw/master/paretian.pdf";
+	import std.string : lastIndexOf;
+	import std.file : exists;
+
+	auto testFileUrl = "https://github.com/Laeeth/docshare/raw/master/paretian.pdf";
 	auto filenameIndex = testFileUrl.lastIndexOf("/");
-	enforce (filenameIndex > -1);
-	auto filename="." ~ testFileUrl[filenameIndex..$];
+	assert(filenameIndex > -1);
+	auto filename = "." ~ testFileUrl[filenameIndex .. $];
 	if(!filename.exists)
-		download(testFileUrl,filename);
+		download(testFileUrl, filename);
 	TikaServer tikaServer;
-	enforce(tikaServer.detectType(filename).value == "application/pdf");
+	assert(tikaServer.detectType(filename).value == "application/pdf");
 	auto meta = tikaServer.extractMetaData(filename);
-	enforce(meta.success, "failed to extract metadata" ~ "\n" ~ meta.value.to!string);
+	assert(meta.success, "failed to extract metadata" ~ "\n" ~ meta.value.text);
 	auto res = tikaServer.convertBulkToText([filename]);
-	import std.stdio;
-	stderr.writeln(meta.value["title"]);
-	enforce(meta.value["title"] == "THE BEST AND THE REST: REVISITING THE NORM OF NORMALITY OF INDIVIDUAL PERFORMANCE");
+	assert(meta.value["title"] == "THE BEST AND THE REST: REVISITING THE NORM OF NORMALITY OF INDIVIDUAL PERFORMANCE");
 }
 
 struct TikaResult
 {
 	import requests : Response;
+
 	int responseCode;
 	bool success = false;
 	string value;
 
 	private this(Response response)
 	{
-		import std.conv : to;
 		success = (response.code == 200);
 		responseCode = response.code;
 		value = (cast(char[]) response.responseBody.data).idup;
@@ -47,13 +40,13 @@ struct TikaResult
 struct TikaMetaData
 {
 	import requests : Response;
+
 	int responseCode;
 	bool success = false;
 	string[string] value;
 
 	private this(Response response)
 	{
-		import std.conv : to;
 		import std.string : splitLines, split;
 		success = (response.code == 200);
 		responseCode = response.code;
@@ -70,73 +63,69 @@ struct TikaMetaData
 
 struct TikaServer
 {
-	import core.time : Duration, seconds;
 	enum url_tika = "tika";
 	enum url_meta = "meta";
 	enum url_detect = "detect/stream";
 	enum url_detectors = "detectors";
 	enum url_mimetypes = "mime-types";
 
-	string url="http://127.0.0.1:9998";
-	Duration timeout = 60.seconds;
+	string url = "http://127.0.0.1:9998";
+	int timeoutSeconds = 60;
 
-	this(string url = "http://127.0.0.1:9998", int timeoutSeconds = 60)
+	private auto doRequestFromFile(string urlPath, string filename)
 	{
-		this.url = url;
-		this.timeout= timeoutSeconds.seconds;
+		import std.stdio : File;
+
+		return doRequestFromData(urlPath, filename.File.byChunk(1024));
+	}
+
+	private auto doRequestFromData(S)(string urlPath, S input)
+	{
+		import requests : Request;
+		import core.time : seconds;
+
+		auto rq = Request();
+		rq.timeout = timeoutSeconds.seconds;
+		return rq.exec!"PUT"(url ~ '/' ~ urlPath, input);
 	}
 
 	TikaMetaData extractMetaData(string filename)
 	{
-		import requests : Request;
-		import std.stdio : File;
-		auto file = File(filename);
-		auto rq = Request();
-		auto response = rq.exec!"PUT"(url~"/"~url_meta,file.byChunk(1024));
-		return TikaMetaData(response);
+		return doRequestFromFile(url_meta, filename)
+			.TikaMetaData;
 	}
 
 	TikaResult[] convertBulkToText(string[] filenames)
 	{
 		import std.algorithm : map;
 		import std.array : array;
+
 		return filenames.map!(filename => convertToText(filename)).array;
 	}
 
 	TikaResult detectType(string filename)
 	{
-		import std.stdio : File;
-		import requests : Request;
-		string ret;
-		auto file = File(filename);
-		auto rq = Request();
-		auto response = rq.exec!"PUT"(url~"/"~url_detect,file.byChunk(1024));
-		return TikaResult(response);
+		return doRequestFromFile(url_detect, filename)
+			.TikaResult;
 	}
 
 	TikaResult convertToText(string filename)
 	{
-		import requests : Request;
-		import std.stdio;
-		import std.conv : to;
-		auto file = File(filename);
-		auto rq = Request();
-		auto response = rq.exec!"PUT"(url~"/"~url_tika,file.byChunk(1024));
-		return TikaResult(response);
+		return doRequestFromFile(url_tika, filename)
+			.TikaResult;
 	}
 
 	TikaResult convertStringToText(string inputString)
 	{
-		import requests : Request;
-		import std.stdio;
-		auto rq = Request();
-		auto response = rq.exec!"PUT"(url~"/"~url_tika,inputString);
-		return TikaResult(response);
+		return doRequestFromData(url_tika, inputString)
+			.TikaResult;
 	}
 }
 
 private string unQuote(string s)
 {
+	import std.string : strip;
+
 	s = s.strip;
 	if (s.length > 2 && (s[0] == '\"'))
 		s = s[1 .. $];
