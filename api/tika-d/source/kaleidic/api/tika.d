@@ -17,7 +17,7 @@ unittest
 	assert(tikaServer.detectType(filename).value == "application/pdf");
 	auto meta = tikaServer.extractMetaData(filename);
 	assert(meta.success, "failed to extract metadata" ~ "\n" ~ meta.value.text);
-	auto res = tikaServer.convertBulkToText([filename]);
+	auto res = tikaServer.convertBulkTo([filename]);
 	assert(meta.value["title"] == "THE BEST AND THE REST: REVISITING THE NORM OF NORMALITY OF INDIVIDUAL PERFORMANCE");
 }
 
@@ -72,52 +72,61 @@ struct TikaServer
 	string url = "http://127.0.0.1:9998";
 	int timeoutSeconds = 60;
 
-	private auto doRequestFromFile(string urlPath, string filename)
+	private auto doRequestFromFile(string urlPath, string filename,
+			string[string] headers = [ "Accept":"text/plain" ])
 	{
 		import std.stdio : File;
 
-		return doRequestFromData(urlPath, filename.File.byChunk(1024));
+		return doRequestFromData(urlPath, filename.File.byChunk(1024),headers);
 	}
 
-	private auto doRequestFromData(S)(string urlPath, S input)
+	private auto doRequestFromData(S)(string urlPath, S input,
+			string[string] headers = [ "Accept":"text/plain" ])
 	{
 		import requests : Request;
 		import core.time : seconds;
 
 		auto rq = Request();
+		rq.addHeaders(headers);
+
 		rq.timeout = timeoutSeconds.seconds;
 		return rq.exec!"PUT"(url ~ '/' ~ urlPath, input);
 	}
 
-	TikaMetaData extractMetaData(string filename)
+	TikaMetaData extractMetaData(string filename,
+			string[string] headers = (string[string]).init)
 	{
-		return doRequestFromFile(url_meta, filename)
+		return doRequestFromFile(url_meta, filename,headers)
 			.TikaMetaData;
 	}
 
-	TikaResult[] convertBulkToText(string[] filenames)
+	TikaResult[] convertBulkTo(string[] filenames,
+			string[string] headers = [ "Accept":"text/plain" ])
 	{
 		import std.algorithm : map;
 		import std.array : array;
 
-		return filenames.map!(filename => convertToText(filename)).array;
+		return filenames.map!(filename => convertTo(filename,headers)).array;
 	}
 
-	TikaResult detectType(string filename)
+	TikaResult detectType(string filename,
+			string[string] headers = (string[string]).init)
 	{
-		return doRequestFromFile(url_detect, filename)
+		return doRequestFromFile(url_detect, filename,headers)
 			.TikaResult;
 	}
 
-	TikaResult convertToText(string filename)
+	TikaResult convertTo(string filename,
+			string[string] headers = [ "Accept":"text/plain" ])
 	{
-		return doRequestFromFile(url_tika, filename)
+		return doRequestFromFile(url_tika, filename,headers)
 			.TikaResult;
 	}
 
-	TikaResult convertStringToText(string inputString)
+	TikaResult convertStringTo(string inputString,
+			string[string] headers = [ "Accept":"text/plain" ])
 	{
-		return doRequestFromData(url_tika, inputString)
+		return doRequestFromData(url_tika, inputString,headers)
 			.TikaResult;
 	}
 }
