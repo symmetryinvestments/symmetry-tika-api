@@ -1,4 +1,4 @@
-module kaleidic.api.tika;
+module symmetry.api.tika;
 
 unittest
 {

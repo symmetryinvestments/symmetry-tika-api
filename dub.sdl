@@ -1,7 +1,8 @@
-name "tika-d"
+name "symmetry-tika-api"
 description "API around Apache Tika text conversion library"
-copyright "Copyright © 2015, Laeeth Isharc and Kaleidic Associates Advisory Limited"
-authors "Laeeth Isharc"
+copyright "Copyright © 2015-2020, Laeeth Isharc, Kaleidic Associates Advisory Limited and Symmetry Investments"
+authors "Laeeth Isharc" "Alexandru Militaru"
+license "MIT"
 dependency "requests" version="*"
 configuration "library" {
 	targetType "library"
